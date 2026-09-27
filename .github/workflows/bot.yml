@@ -1,0 +1,27 @@
+name: Automatizador de Ofertas Mercado Libre
+
+on:
+  schedule:
+    # Se ejecuta automáticamente cada 6 horas
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Permite ejecutar el bot manualmente
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar Código
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar Bot de Ofertas
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+        run: python auto_fetch.py
