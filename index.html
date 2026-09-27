@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Pulga Online - Tu tianguis digital de chidos descuentos</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-gray-100 min-h-screen flex flex-col selection:bg-purple-500 selection:text-white">
+
+    <!-- Notificación Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-emerald-500 text-gray-950 px-5 py-3 rounded-xl font-bold shadow-lg flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <span id="toast-message">¡Acción realizada con éxito!</span>
+    </div>
+
+    <!-- Header & Navegación -->
+    <header class="sticky top-0 z-40 bg-[#0b0f19]/90 backdrop-blur-md border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+            
+            <!-- Logo -->
+            <a href="#" onclick="filterBy('all')" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-tags text-gray-950 text-xl font-black"></i>
+                </div>
+                <div>
+                    <span class="text-xl sm:text-2xl font-black tracking-wider bg-gradient-to-r from-purple-400 via-pink-400 to-emerald-400 bg-clip-text text-transparent">
+                        LA PULGA ONLINE
+                    </span>
+                    <p class="text-[10px] text-gray-400 font-medium tracking-wide">Tu tianguis digital de chidos descuentos</p>
+                </div>
+            </a>
+
+            <!-- Buscador Central -->
+            <div class="hidden md:flex flex-1 max-w-md relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Busca audífonos, ropa, tenis..." class="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 transition-colors">
+            </div>
+
+            <!-- Navegación -->
+            <nav class="hidden lg:flex items-center gap-6 text-sm font-semibold">
+                <button onclick="filterBy('all')" class="hover:text-purple-400 transition-colors">Inicio</button>
+                
+                <div class="relative group">
+                    <button class="flex items-center gap-1.5 hover:text-purple-400 py-2 transition-colors">
+                        Categorías <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="absolute top-full left-0 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl py-2 hidden group-hover:block z-50">
+                        <button onclick="filterByCategory('Tech')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">💻 Tech & Gadgets</button>
+                        <button onclick="filterByCategory('Gaming')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">🎮 Gaming & Setup</button>
+                        <button onclick="filterByCategory('Moda')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">👕 Moda & Streetwear</button>
+                        <button onclick="filterByCategory('Belleza')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">✨ Belleza & Skincare</button>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="flex items-center gap-1.5 hover:text-purple-400 py-2 transition-colors">
+                        Tiendas <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="absolute top-full left-0 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-xl py-2 hidden group-hover:block z-50">
+                        <button onclick="filterByStore('Mercado Libre')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">🤝 Mercado Libre</button>
+                        <button onclick="filterByStore('Amazon')" class="w-full text-left px-4 py-2 hover:bg-purple-600/20 hover:text-purple-400 text-xs">📦 Amazon (Próximamente)</button>
+                    </div>
+                </div>
+
+                <button onclick="scrollToSection('coupons-section')" class="hover:text-purple-400 transition-colors">Cupones</button>
+            </nav>
+
+            <!-- Acciones -->
+            <div class="flex items-center gap-3">
+                <button onclick="toggleFavoritesView()" class="relative p-2.5 bg-gray-900 border border-gray-800 rounded-xl hover:border-purple-500 transition-colors" title="Favoritos">
+                    <i class="fa-solid fa-heart text-pink-500"></i>
+                    <span id="fav-count" class="absolute -top-1.5 -right-1.5 bg-purple-600 text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+                <button onclick="openAdminModal()" class="p-2.5 bg-purple-600/20 border border-purple-500/40 text-purple-400 rounded-xl hover:bg-purple-600 hover:text-white transition-all" title="Panel de Administración">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+                <button onclick="toggleMobileMenu()" class="lg:hidden p-2.5 bg-gray-900 border border-gray-800 rounded-xl hover:border-purple-500 transition-colors">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Buscador Mobile -->
+        <div class="px-4 pb-3 md:hidden">
+            <div class="relative w-full">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="search-input-mobile" oninput="handleSearch(this.value)" placeholder="Busca audífonos, ropa, tenis..." class="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+            </div>
+        </div>
+
+        <!-- Menú Móvil -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-gray-900 border-t border-gray-800 px-4 py-4 space-y-3">
+            <button onclick="filterBy('all'); toggleMobileMenu();" class="block w-full text-left py-2 font-semibold hover:text-purple-400">🏠 Inicio</button>
+            <div class="border-t border-gray-800 pt-2">
+                <p class="text-xs text-gray-400 font-bold mb-1">CATEGORÍAS</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="filterByCategory('Tech'); toggleMobileMenu();" class="text-left py-1 text-sm hover:text-purple-400">💻 Tech</button>
+                    <button onclick="filterByCategory('Gaming'); toggleMobileMenu();" class="text-left py-1 text-sm hover:text-purple-400">🎮 Gaming</button>
+                    <button onclick="filterByCategory('Moda'); toggleMobileMenu();" class="text-left py-1 text-sm hover:text-purple-400">👕 Moda</button>
+                    <button onclick="filterByCategory('Belleza'); toggleMobileMenu();" class="text-left py-1 text-sm hover:text-purple-400">✨ Belleza</button>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-2">
+                <p class="text-xs text-gray-400 font-bold mb-1">TIENDAS</p>
+                <div class="grid grid-cols-1 gap-2">
+                    <button onclick="filterByStore('Mercado Libre'); toggleMobileMenu();" class="text-left py-1 text-sm hover:text-purple-400">🤝 Mercado Libre</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
+
+        <!-- Carrusel Dinámico Superior de Ofertas Activas -->
+        <section class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-purple-900/40 via-gray-900 to-emerald-900/30 border border-purple-500/20 shadow-2xl min-h-[320px] flex items-center">
+            <div id="hero-carousel-container" class="w-full h-full relative flex items-center">
+                <!-- Se inyecta dinámicamente mediante JS -->
+                <div class="w-full p-8 text-center text-gray-400">Cargando carrusel de ofertas...</div>
+            </div>
+            <!-- Controles de Carrusel -->
+            <button onclick="prevHeroSlide()" class="absolute left-4 z-20 p-2.5 bg-gray-950/60 hover:bg-gray-950 text-white rounded-full backdrop-blur-md border border-gray-800 transition-all">
+                <i class="fa-solid fa-chevron-left text-sm"></i>
+            </button>
+            <button onclick="nextHeroSlide()" class="absolute right-4 z-20 p-2.5 bg-gray-950/60 hover:bg-gray-950 text-white rounded-full backdrop-blur-md border border-gray-800 transition-all">
+                <i class="fa-solid fa-chevron-right text-sm"></i>
+            </button>
+        </section>
+
+        <!-- Vista Dinámica -->
+        <div id="dynamic-results-view" class="hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 id="dynamic-title" class="text-xl sm:text-2xl font-black">Resultados</h2>
+                <button onclick="filterBy('all')" class="text-xs font-bold text-purple-400 hover:underline">Ver todo el tianguis</button>
+            </div>
+            <div id="dynamic-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </div>
+
+        <!-- Vista Normal -->
+        <main id="normal-view" class="space-y-12">
+            
+            <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl sm:text-2xl font-black flex items-center gap-2">
+                        <i class="fa-solid fa-fire text-amber-500"></i> Top Promociones Activas
+                    </h2>
+                    <span class="text-xs text-gray-400 font-medium">Sincronizado en la nube (Firebase)</span>
+                </div>
+                <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Inyectado por JS -->
+                </div>
+            </section>
+
+            <!-- Sección de Cupones -->
+            <section id="coupons-section" class="pt-6 space-y-6">
+                <div class="border-t border-gray-800 pt-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-black flex items-center gap-2">
+                                <i class="fa-solid fa-ticket text-emerald-400"></i> Cupones & Códigos Exclusivos
+                            </h2>
+                            <p class="text-xs text-gray-400 mt-1">Copia el código y pégalo al pagar en tu tienda favorita.</p>
+                        </div>
+                    </div>
+                    <div id="coupons-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+                </div>
+            </section>
+
+        </main>
+
+    </main>
+
+    <!-- Modal de Administración Protegido -->
+    <div id="admin-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-gray-900 border border-gray-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+            
+            <!-- Botón Cerrar Modal -->
+            <button onclick="closeAdminModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <!-- Pantalla de PIN -->
+            <div id="admin-login-view" class="space-y-4 text-center py-6">
+                <div class="w-12 h-12 bg-purple-600/20 text-purple-400 rounded-2xl mx-auto flex items-center justify-center border border-purple-500/30">
+                    <i class="fa-solid fa-lock text-xl"></i>
+                </div>
+                <h3 class="text-xl font-black">Acceso al Panel de Control</h3>
+                <p class="text-xs text-gray-400">Ingresa tu PIN de administración para gestionar las ofertas.</p>
+                <div class="max-w-xs mx-auto space-y-3 pt-2">
+                    <input type="password" id="admin-pin-input" placeholder="PIN (ej. 1234)" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-center tracking-widest text-lg focus:outline-none focus:border-purple-500">
+                    <button onclick="verifyAdminPin()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm shadow-lg">Entrar al Panel</button>
+                </div>
+            </div>
+
+            <!-- Panel de Gestión de Promociones -->
+            <div id="admin-panel-view" class="hidden space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                    <div>
+                        <h3 class="text-xl font-black text-purple-400 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> Panel Administrador (Nube Firebase)
+                        </h3>
+                        <p class="text-xs text-gray-400">Agrega, pausa o elimina ofertas en tiempo real.</p>
+                    </div>
+                    <button onclick="logoutAdmin()" class="text-xs text-red-400 hover:underline font-bold">Cerrar sesión</button>
+                </div>
+
+                <!-- Formulario Nueva Promo -->
+                <form id="product-form" onsubmit="handleSaveProduct(event)" class="space-y-4 bg-gray-950 p-4 sm:p-5 rounded-2xl border border-gray-800">
+                    <h4 class="font-bold text-sm text-gray-200">➕ Publicar Nueva Promoción</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Título del Producto</label>
+                            <input type="text" id="p-title" required placeholder="Ej. Audífonos Inalámbricos Bluetooth" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Tienda</label>
+                            <select id="p-store" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                                <option value="Mercado Libre">Mercado Libre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Precio Oferta ($)</label>
+                            <input type="number" id="p-price" required placeholder="499" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Precio Normal ($)</label>
+                            <input type="number" id="p-oldprice" required placeholder="999" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Categoría</label>
+                            <select id="p-category" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                                <option value="Tech">Tech</option>
+                                <option value="Gaming">Gaming</option>
+                                <option value="Moda">Moda</option>
+                                <option value="Belleza">Belleza</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">URL de la Imagen (Foto)</label>
+                            <input type="url" id="p-image" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 mb-1">Enlace de Afiliado (ML o meli.la)</label>
+                            <input type="url" id="p-link" required value="https://www.mercadolibre.com.mx/social/eg20260925105329727" class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs focus:outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-extrabold rounded-xl text-xs transition-colors shadow-md">
+                        Guardar y Publicar en la Nube
+                    </button>
+                </form>
+
+                <!-- Listado de Ofertas Actuales para Pausar/Eliminar -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-sm text-gray-200">📋 Administrar Ofertas en la Nube</h4>
+                    <div id="admin-products-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <!-- Inyectado por JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer Institucional -->
+    <footer class="bg-gray-950 border-t border-gray-800 mt-20 py-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 text-center md:text-left">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-emerald-400 flex items-center justify-center font-black text-gray-950">
+                        <i class="fa-solid fa-tags"></i>
+                    </div>
+                    <span class="text-lg font-black tracking-wider text-white">LA PULGA ONLINE</span>
+                </div>
+                <div class="flex items-center gap-6 text-sm text-gray-400 font-medium">
+                    <a href="#" onclick="filterBy('all')" class="hover:text-purple-400 transition-colors">Inicio</a>
+                    <a href="#coupons-section" class="hover:text-purple-400 transition-colors">Cupones</a>
+                    <button onclick="openAdminModal()" class="text-purple-400 hover:underline">⚙️ Admin</button>
+                </div>
+            </div>
+            
+            <div class="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-4 text-xs text-gray-400 leading-relaxed text-center md:text-left">
+                <p>
+                    <strong class="text-gray-300">Aviso de Exención de Responsabilidad:</strong> La Pulga Online participa en el programa de afiliados de Mercado Libre. Podemos recibir una comisión por las compras realizadas a través de los enlaces incluidos en este sitio web sin costo adicional para ti.
+                </p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-900 gap-4">
+                <p>&copy; 2026 La Pulga Online. Hecho para la banda.</p>
+                <div class="flex items-center gap-4">
+                    <span>🇲🇽 Hecho en México</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Firebase y Lógica JavaScript -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFw0LAOMMkoJHKjVAztx0UKuo6HwL9OKY",
+            authDomain: "lapulgaonlinemx-63c39.firebaseapp.com",
+            projectId: "lapulgaonlinemx-63c39",
+            storageBucket: "lapulgaonlinemx-63c39.firebasestorage.app",
+            messagingSenderId: "388729939265",
+            appId: "1:388729939265:web:ebe2e13af0479a6344adc0",
+            measurementId: "G-3QXX0KYXSY"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // PIN del Administrador
+        const ADMIN_PIN = "1234";
+
+        const coupons = [
+            { code: "TIANGUISML", store: "Mercado Libre", desc: "Envío gratis + $100 en compras mayores a $299", discount: "$100 OFF" }
+        ];
+
+        let products = [];
+        let favorites = JSON.parse(localStorage.getItem('pulga_favorites')) || [];
+        let currentHeroIndex = 0;
+        let heroInterval = null;
+
+        // Inicializar conexión en tiempo real con Firestore (Base de datos limpia)
+        async function initFirestore() {
+            onSnapshot(collection(db, "products"), (snapshot) => {
+                products = [];
+                snapshot.forEach((docSnap) => {
+                    products.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderProducts();
+                renderHeroCarousel();
+                renderAdminProductsList();
+                updateFavCount();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirestore();
+            renderCoupons();
+            updateFavCount();
+        });
+
+        // Renderizar Carrusel Dinámico Superior
+        window.renderHeroCarousel = function() {
+            const container = document.getElementById('hero-carousel-container');
+            if(!container) return;
+            
+            const activeProducts = products.filter(p => p.active !== false);
+
+            if(activeProducts.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div class="space-y-4 max-w-xl text-center md:text-left">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                <i class="fa-solid fa-fire text-amber-400"></i> Tianguis Digital Abierto
+                            </span>
+                            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight">
+                                Publica tus ofertas y <span class="bg-gradient-to-r from-purple-400 to-emerald-400 bg-clip-text text-transparent">comisiona en grande</span>
+                            </h1>
+                            <p class="text-gray-300 text-sm sm:text-base">
+                                Tu base de datos está lista. Entra al panel de administración (⚙️ Admin) para agregar tu primer chollo de Mercado Libre.
+                            </p>
+                        </div>
+                        <div class="w-full md:w-80 h-56 sm:h-64 rounded-2xl overflow-hidden border border-purple-500/30 shadow-inner relative bg-gray-950 flex items-center justify-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-5xl text-purple-500/40"></i>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if(currentHeroIndex >= activeProducts.length) currentHeroIndex = 0;
+            const p = activeProducts[currentHeroIndex];
+            const discountCalc = p.oldPrice > p.price ? Math.round((1 - (p.price / p.oldPrice)) * 100) : 0;
+            const discountStr = discountCalc > 0 ? `-${discountCalc}% Descuento` : '¡Ofertazo!';
+
+            container.innerHTML = `
+                <div class="w-full p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-700">
+                    <div class="space-y-4 max-w-xl text-center md:text-left">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            <i class="fa-solid fa-fire text-amber-400"></i> ${discountStr} (${p.store})
+                        </span>
+                        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight line-clamp-2">
+                            ${p.title}
+                        </h1>
+                        <div class="flex items-center justify-center md:justify-start gap-3">
+                            <span class="text-2xl sm:text-3xl font-black text-emerald-400">$${p.price} <span class="text-xs text-gray-400 font-normal">MXN</span></span>
+                            <span class="text-sm text-gray-500 line-through">$${p.oldPrice} MXN</span>
+                        </div>
+                        <div class="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4">
+                            <a href="${p.link}" target="_blank" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-emerald-400 text-gray-950 font-extrabold rounded-xl shadow-lg hover:opacity-90 transition-opacity flex items-center gap-2 text-sm">
+                                <span>Ver Oferta en ${p.store}</span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-80 h-56 sm:h-64 rounded-2xl overflow-hidden border border-purple-500/30 shadow-inner relative group bg-gray-950">
+                        <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute bottom-3 right-3 bg-gray-950/80 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-black text-emerald-400 border border-emerald-500/30">
+                            ✨ ${p.category}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Reiniciar autoplay del carrusel
+            if(heroInterval) clearInterval(heroInterval);
+            heroInterval = setInterval(() => {
+                nextHeroSlide();
+            }, 5000);
+        }
+
+        window.nextHeroSlide = function() {
+            const activeProducts = products.filter(p => p.active !== false);
+            if(activeProducts.length <= 1) return;
+            currentHeroIndex = (currentHeroIndex + 1) % activeProducts.length;
+            renderHeroCarousel();
+        }
+
+        window.prevHeroSlide = function() {
+            const activeProducts = products.filter(p => p.active !== false);
+            if(activeProducts.length <= 1) return;
+            currentHeroIndex = (currentHeroIndex - 1 + activeProducts.length) % activeProducts.length;
+            renderHeroCarousel();
+        }
+
+        // Renderizar productos activos en el grid
+        window.renderProducts = function() {
+            const container = document.getElementById('products-grid');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            const activeProducts = products.filter(p => p.active !== false);
+            
+            if(activeProducts.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400">No hay chollos activos en este momento. Usa el panel de administración para agregar promos.</div>`;
+                return;
+            }
+
+            activeProducts.forEach(p => {
+                container.innerHTML += createProductCardHTML(p);
+            });
+        }
+
+        function createProductCardHTML(p) {
+            const isFav = favorites.some(f => f.id === p.id);
+            const discountCalc = p.oldPrice > p.price ? Math.round((1 - (p.price / p.oldPrice)) * 100) : 0;
+            const discountStr = discountCalc > 0 ? `-${discountCalc}%` : 'OFERTA';
+            const shareText = encodeURIComponent(`¡Mira este ofertazo en La Pulga Online! 🔥 ${p.title} a solo $${p.price} MXN. Chécalo aquí: ${p.link}`);
+            
+            return `
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden group hover:border-purple-500/50 transition-all duration-300 flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="relative h-48 overflow-hidden bg-gray-950">
+                            <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 bg-purple-600 text-white font-black text-xs px-2.5 py-1 rounded-lg shadow">
+                                ${discountStr}
+                            </span>
+                            <span class="absolute top-3 right-3 bg-gray-950/80 backdrop-blur-md text-gray-300 font-semibold text-[10px] px-2 py-1 rounded-lg border border-gray-800">
+                                ${p.store}
+                            </span>
+                            <button onclick="toggleFavorite('${p.id}')" class="absolute bottom-3 right-3 w-9 h-9 rounded-xl bg-gray-950/80 backdrop-blur-md flex items-center justify-center text-pink-500 hover:scale-110 transition-transform">
+                                <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-heart text-base"></i>
+                            </button>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400">${p.category}</span>
+                            <h3 class="font-bold text-sm text-gray-100 line-clamp-2 leading-snug">${p.title}</h3>
+                            <div class="flex items-baseline gap-2 pt-1">
+                                <span class="text-lg font-black text-emerald-400">$${p.price} <span class="text-xs font-normal text-gray-400">MXN</span></span>
+                                <span class="text-xs text-gray-500 line-through">$${p.oldPrice}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 pt-0 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <a href="${p.link}" target="_blank" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl text-center transition-colors shadow-md flex items-center justify-center gap-1.5">
+                                <span>Ver Oferta</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                            <div class="flex items-center justify-center gap-1 bg-gray-950 rounded-xl border border-gray-800 px-2">
+                                <a href="https://api.whatsapp.com/send?text=${shareText}" target="_blank" title="Compartir WhatsApp" class="p-1.5 text-emerald-400 hover:scale-110 transition-transform">
+                                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                                </a>
+                                <span class="text-gray-700">|</span>
+                                <a href="https://t.me/share/url?url=${encodeURIComponent(p.link)}&text=${shareText}" target="_blank" title="Compartir Telegram" class="p-1.5 text-sky-400 hover:scale-110 transition-transform">
+                                    <i class="fa-brands fa-telegram text-sm"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renderizar Cupones
+        window.renderCoupons = function() {
+            const container = document.getElementById('coupons-grid');
+            if(!container) return;
+            container.innerHTML = '';
+            coupons.forEach(c => {
+                container.innerHTML += `
+                    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-emerald-500/50 transition-colors">
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-400">${c.store}</span>
+                                <span class="bg-emerald-500/10 text-emerald-400 text-xs font-black px-2.5 py-0.5 rounded-full border border-emerald-500/20">${c.discount}</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-100">${c.desc}</h4>
+                        </div>
+                        <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                            <span class="font-mono font-black text-purple-400 tracking-wider text-sm px-2">${c.code}</span>
+                            <button onclick="copyToClipboard('${c.code}', '¡Cupón ${c.code} copiado!')" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5">
+                                <i class="fa-solid fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Funciones del Modal Administrador
+        window.openAdminModal = function() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            if(sessionStorage.getItem('pulga_logged') === 'true') {
+                showAdminPanel();
+            } else {
+                document.getElementById('admin-login-view').classList.remove('hidden');
+                document.getElementById('admin-panel-view').classList.add('hidden');
+            }
+        }
+
+        window.closeAdminModal = function() {
+            document.getElementById('admin-modal').classList.add('hidden');
+        }
+
+        window.verifyAdminPin = function() {
+            const pin = document.getElementById('admin-pin-input').value;
+            if(pin === ADMIN_PIN) {
+                sessionStorage.setItem('pulga_logged', 'true');
+                showAdminPanel();
+                showToast('¡Bienvenido al panel!');
+            } else {
+                alert('PIN incorrecto. Intenta de nuevo.');
+            }
+            document.getElementById('admin-pin-input').value = '';
+        }
+
+        function showAdminPanel() {
+            document.getElementById('admin-login-view').classList.add('hidden');
+            document.getElementById('admin-panel-view').classList.remove('hidden');
+            renderAdminProductsList();
+        }
+
+        window.logoutAdmin = function() {
+            sessionStorage.removeItem('pulga_logged');
+            document.getElementById('admin-panel-view').classList.add('hidden');
+            document.getElementById('admin-login-view').classList.remove('hidden');
+        }
+
+        // Guardar o Crear Producto en la Nube
+        window.handleSaveProduct = async function(e) {
+            e.preventDefault();
+            const newProd = {
+                title: document.getElementById('p-title').value,
+                store: document.getElementById('p-store').value,
+                category: document.getElementById('p-category').value,
+                price: parseFloat(document.getElementById('p-price').value),
+                oldPrice: parseFloat(document.getElementById('p-oldprice').value),
+                image: document.getElementById('p-image').value,
+                link: document.getElementById('p-link').value,
+                active: true
+            };
+
+            try {
+                await addDoc(collection(db, "products"), newProd);
+                document.getElementById('product-form').reset();
+                document.getElementById('p-link').value = "https://www.mercadolibre.com.mx/social/eg20260925105329727";
+                showToast('¡Promoción publicada en la nube!');
+            } catch (error) {
+                console.error("Error al guardar: ", error);
+                alert("Hubo un error al guardar en Firebase.");
+            }
+        }
+
+        // Listar productos en el panel para Pausar o Eliminar
+        window.renderAdminProductsList = function() {
+            const list = document.getElementById('admin-products-list');
+            if(!list) return;
+            list.innerHTML = '';
+
+            if(products.length === 0) {
+                list.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">No hay productos registrados en la base de datos.</p>`;
+                return;
+            }
+
+            products.forEach(p => {
+                const isPaused = p.active === false;
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs gap-3">
+                        <div class="flex items-center gap-3 truncate">
+                            <img src="${p.image}" class="w-9 h-9 object-cover rounded-lg shrink-0">
+                            <div class="truncate">
+                                <p class="font-bold text-gray-200 truncate">${p.title}</p>
+                                <p class="text-[10px] text-gray-400">$${p.price} MXN | <span class="${isPaused ? 'text-amber-400' : 'text-emerald-400'} font-bold">${isPaused ? 'Pausado' : 'Activo'}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="togglePauseProduct('${p.id}', ${p.active})" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-bold transition-colors">
+                                ${isPaused ? 'Activar' : 'Pausar'}
+                            </button>
+                            <button onclick="deleteProduct('${p.id}')" class="px-2.5 py-1.5 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded-lg font-bold transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.togglePauseProduct = async function(id, currentActive) {
+            try {
+                const prodRef = doc(db, "products", id);
+                const newStatus = currentActive === false ? true : false;
+                await updateDoc(prodRef, { active: newStatus });
+                showToast(newStatus ? '¡Oferta activada!' : '¡Oferta pausada!');
+            } catch (error) {
+                console.error("Error al actualizar estado: ", error);
+            }
+        }
+
+        window.deleteProduct = async function(id) {
+            if(confirm('¿Estás seguro de eliminar esta promoción de la base de datos?')) {
+                try {
+                    await deleteDoc(doc(db, "products", id));
+                    showToast('Promoción eliminada de la nube');
+                } catch (error) {
+                    console.error("Error al eliminar: ", error);
+                }
+            }
+        }
+
+        // Búsqueda y Filtrado
+        window.handleSearch = function(query) {
+            const q = query.toLowerCase().trim();
+            if(q === '') { filterBy('all'); return; }
+            const filtered = products.filter(p => (p.active !== false) && (p.title.toLowerCase().includes(q) || p.store.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)));
+            showDynamicResults(`Búsqueda: "${query}"`, filtered);
+        }
+
+        window.filterByCategory = function(cat) {
+            const filtered = products.filter(p => (p.active !== false) && (p.category.toLowerCase() === cat.toLowerCase()));
+            showDynamicResults(`Categoría: ${cat}`, filtered);
+        }
+
+        window.filterByStore = function(store) {
+            const filtered = products.filter(p => (p.active !== false) && (p.store.toLowerCase() === store.toLowerCase()));
+            showDynamicResults(`Tienda: ${store}`, filtered);
+        }
+
+        function showDynamicResults(titleText, items) {
+            document.getElementById('normal-view').classList.add('hidden');
+            const resView = document.getElementById('dynamic-results-view');
+            resView.classList.remove('hidden');
+            document.getElementById('dynamic-title').innerText = titleText;
+            
+            const grid = document.getElementById('dynamic-grid');
+            grid.innerHTML = '';
+            if(items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400">No se encontraron ofertas con este filtro.</div>`;
+                return;
+            }
+            items.forEach(p => {
+                grid.innerHTML += createProductCardHTML(p);
+            });
+        }
+
+        window.filterBy = function(type) {
+            document.getElementById('dynamic-results-view').classList.add('hidden');
+            document.getElementById('normal-view').classList.remove('hidden');
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-input-mobile').value = '';
+            renderProducts();
+        }
+
+        // Favoritos y Utilidades
+        window.toggleFavorite = function(id) {
+            const product = products.find(p => p.id === id);
+            if(!product) return;
+            const index = favorites.findIndex(f => f.id === id);
+            if(index > -1) { favorites.splice(index, 1); } else { favorites.push(product); }
+            localStorage.setItem('pulga_favorites', JSON.stringify(favorites));
+            updateFavCount();
+            if(document.getElementById('dynamic-title').innerText === 'Mis Favoritos Guardados') {
+                toggleFavoritesView();
+            } else {
+                renderProducts();
+            }
+        }
+
+        window.toggleFavoritesView = function() {
+            showDynamicResults('Mis Favoritos Guardados', favorites);
+        }
+
+        window.updateFavCount = function() {
+            const el = document.getElementById('fav-count');
+            if(el) el.innerText = favorites.length;
+        }
+
+        window.copyToClipboard = function(text, message) {
+            navigator.clipboard.writeText(text).then(() => { showToast(message); });
+        }
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        window.toggleMobileMenu = function() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        window.scrollToSection = function(id) {
+            const el = document.getElementById(id);
+            if(el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
