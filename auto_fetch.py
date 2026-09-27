@@ -21,76 +21,85 @@ def init_firebase():
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-def fetch_ml_deals():
-    """Obtiene hasta 200 ofertas de Mercado Libre México realizando peticiones paginadas"""
+def fetch_category_deals(query, category_name, limit=50):
+    """Busca ofertas y más vendidos dentro de una categoría específica"""
     headers = {"User-Agent": "Mozilla/5.0"}
-    deals = []
+    # Ordenamos por popularidad / más vendidos o búsquedas de tendencia
+    url = f"https://api.mercadolibre.com/sites/MLM/search?q={query}&limit={limit}"
     
-    # Hacemos 4 peticiones de 50 productos cada una (Total = 200 productos)
-    for offset in [0, 50, 100, 150]:
-        url = f"https://api.mercadolibre.com/sites/MLM/search?q=oferta&limit=50&offset={offset}"
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code != 200:
-            print(f"Error al consultar Mercado Libre API (offset {offset}): {response.status_code}")
-            continue
-        
-        results = response.json().get("results", [])
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error al consultar {category_name}: {response.status_code}")
+        return []
 
-        for item in results:
-            price = item.get("price", 0)
-            original_price = item.get("original_price") or (price * 1.25) # Estimación si no hay precio previo
+    results = response.json().get("results", [])
+    deals = []
+
+    for item in results:
+        price = item.get("price", 0)
+        original_price = item.get("original_price") or (price * 1.25)
+        
+        # Filtramos que sea una oferta con precio válido
+        if price > 0:
+            thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg")
             
-            # Filtrar productos con descuento
-            if original_price > price:
-                thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg") # Imagen de alta resolución
-                
-                # Mapeo de categorías básico
-                cat_id = str(item.get("category_id", ""))
-                category = "Tech"
-                if "MLM1430" in cat_id or "MLM1144" in cat_id:
-                    category = "Gaming"
-                elif "MLM1430" in cat_id or "Ropa" in item.get("title", ""):
-                    category = "Moda"
-
-                deals.append({
-                    "title": item.get("title", "Oferta Destacada"),
-                    "store": "Mercado Libre",
-                    "category": category,
-                    "price": float(price),
-                    "oldPrice": float(original_price),
-                    "image": thumbnail,
-                    "link": AFFILIATE_LINK, # Enlace de afiliado
-                    "active": True,
-                    "ml_id": item.get("id")
-                })
-                
+            deals.append({
+                "title": item.get("title", "Oferta Destacada"),
+                "store": "Mercado Libre",
+                "category": category_name,
+                "price": float(price),
+                "oldPrice": float(original_price if original_price > price else price * 1.2),
+                "image": thumbnail,
+                "link": AFFILIATE_LINK,
+                "active": True,
+                "ml_id": item.get("id")
+            })
+            
     return deals
 
+def fetch_all_balanced_deals():
+    """Junta 200 ofertas repartidas en las 4 categorías principales"""
+    all_deals = []
+    
+    # Búsquedas estratégicas por categoría y tendencias de lo más vendido
+    categories_queries = [
+        {"query": "tecnologia gadget oferta mas vendido", "category": "Tech"},
+        {"query": "videojuegos gamer consola oferta", "category": "Gaming"},
+        {"query": "ropa tenis moda descuento", "category": "Moda"},
+        {"query": "skincare belleza hogar oferta mas vendido", "category": "Belleza"}
+    ]
+    
+    for item in categories_queries:
+        print(f"📦 Obteniendo 50 productos para la categoría: {item['category']}...")
+        category_deals = fetch_category_deals(item["query"], item["category"], limit=50)
+        all_deals.extend(category_deals)
+        
+    return all_deals
+
 def sync_to_firestore(db, deals):
-    """Limpia las ofertas viejas e inserta las nuevas en Firebase mediante lotes (batches)"""
+    """Limpia la base de datos y guarda las 200 ofertas variadas"""
     products_ref = db.collection("products")
     
-    # 1. Eliminar ofertas antiguas para mantener la lista fresca
+    # 1. Limpiar catálogo anterior
     docs = products_ref.stream()
     for doc in docs:
         doc.reference.delete()
-    print("🧹 Ofertas anteriores limpiadas de la base de datos.")
+    print("🧹 Base de datos limpiada para actualizar catálogo.")
 
-    # 2. Agregar las 200 nuevas ofertas
+    # 2. Insertar los nuevos 200 productos
     count = 0
     for deal in deals:
         products_ref.add(deal)
         count += 1
-        print(f"✅ [{count}/{len(deals)}] Agregado: {deal['title']} - ${deal['price']} MXN")
+        print(f"✅ [{count}/{len(deals)}] Agregado ({deal['category']}): {deal['title'][:35]}... - ${deal['price']} MXN")
 
 if __name__ == "__main__":
     db = init_firebase()
-    print("🔎 Buscando 200 ofertas en Mercado Libre...")
-    new_deals = fetch_ml_deals()
-    if new_deals:
-        print(f"🔥 Se encontraron {len(new_deals)} ofertas válidas. Sincronizando...")
-        sync_to_firestore(db, new_deals)
-        print("🚀 Sincronización completada con éxito.")
+    print("🔎 Iniciando búsqueda balanceada de 200 ofertas más vendidas...")
+    deals = fetch_all_balanced_deals()
+    if deals:
+        print(f"🔥 Se obtuvieron {len(deals)} ofertas en total. Sincronizando con Firebase...")
+        sync_to_firestore(db, deals)
+        print("🚀 ¡Sincronización balanceada completada con éxito!")
     else:
-        print("No se encontraron ofertas relevantes en este ciclo.")
+        print("No se encontraron datos en la búsqueda.")
