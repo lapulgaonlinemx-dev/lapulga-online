@@ -7,6 +7,13 @@ from firebase_admin import credentials, firestore
 # Configuración del enlace de afiliado
 AFFILIATE_LINK = "https://www.mercadolibre.com.mx/social/eg20260925105329727"
 
+# Encabezados de navegador real para evitar el error 403 de Mercado Libre
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "es-MX,es;q=0.9,en-US;q=0.8,en;q=0.7"
+}
+
 def init_firebase():
     """Inicializa la conexión a Firebase usando archivo local o Variable de Entorno"""
     if os.path.exists("serviceAccountKey.json"):
@@ -22,39 +29,42 @@ def init_firebase():
     return firestore.client()
 
 def fetch_category_deals(query, category_name, total_needed=100):
-    """Obtiene 100 productos por categoría paginando de 50 en 50"""
-    headers = {"User-Agent": "Mozilla/5.0"}
+    """Obtiene productos por categoría evitando bloqueos 403"""
     deals = []
     
     # Hacemos 2 peticiones de 50 productos cada una (offset 0 y 50) = 100 productos
     for offset in [0, 50]:
         url = f"https://api.mercadolibre.com/sites/MLM/search?q={query}&limit=50&offset={offset}"
-        response = requests.get(url, headers=headers)
         
-        if response.status_code != 200:
-            print(f"Error al consultar {category_name} (offset {offset}): {response.status_code}")
-            continue
-
-        results = response.json().get("results", [])
-
-        for item in results:
-            price = item.get("price", 0)
-            original_price = item.get("original_price") or (price * 1.25)
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=10)
             
-            if price > 0:
-                thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg")
+            if response.status_code != 200:
+                print(f"⚠️ Error al consultar {category_name} (offset {offset}): {response.status_code}")
+                continue
+
+            results = response.json().get("results", [])
+
+            for item in results:
+                price = item.get("price", 0)
+                original_price = item.get("original_price") or (price * 1.25)
                 
-                deals.append({
-                    "title": item.get("title", "Oferta Destacada"),
-                    "store": "Mercado Libre",
-                    "category": category_name,
-                    "price": float(price),
-                    "oldPrice": float(original_price if original_price > price else price * 1.2),
-                    "image": thumbnail,
-                    "link": AFFILIATE_LINK,
-                    "active": True,
-                    "ml_id": item.get("id")
-                })
+                if price > 0:
+                    thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg")
+                    
+                    deals.append({
+                        "title": item.get("title", "Oferta Destacada"),
+                        "store": "Mercado Libre",
+                        "category": category_name,
+                        "price": float(price),
+                        "oldPrice": float(original_price if original_price > price else price * 1.2),
+                        "image": thumbnail,
+                        "link": AFFILIATE_LINK,
+                        "active": True,
+                        "ml_id": item.get("id")
+                    })
+        except Exception as e:
+            print(f"❌ Excepción en consulta {category_name}: {e}")
             
     return deals[:total_needed]
 
@@ -78,7 +88,7 @@ def fetch_all_balanced_deals():
     return all_deals
 
 def sync_to_firestore(db, deals):
-    """Limpia la base de datos y guarda las 400 ofertas"""
+    """Limpia la base de datos y guarda las ofertas obtenidas"""
     products_ref = db.collection("products")
     
     # 1. Limpiar catálogo anterior
@@ -87,7 +97,7 @@ def sync_to_firestore(db, deals):
         doc.reference.delete()
     print("🧹 Base de datos limpiada para actualizar catálogo.")
 
-    # 2. Insertar los nuevos 400 productos
+    # 2. Insertar los productos nuevos
     count = 0
     for deal in deals:
         products_ref.add(deal)
@@ -96,11 +106,11 @@ def sync_to_firestore(db, deals):
 
 if __name__ == "__main__":
     db = init_firebase()
-    print("🔎 Iniciando búsqueda de 400 ofertas más vendidas (100 por categoría)...")
+    print("🔎 Iniciando búsqueda de ofertas más vendidas...")
     deals = fetch_all_balanced_deals()
     if deals:
         print(f"🔥 Se obtuvieron {len(deals)} ofertas en total. Sincronizando con Firebase...")
         sync_to_firestore(db, deals)
-        print("🚀 ¡Sincronización de 400 productos completada con éxito!")
+        print("🚀 ¡Sincronización completada con éxito!")
     else:
-        print("No se encontraron datos en la búsqueda.")
+        print("❌ No se encontraron datos en la búsqueda. Revisa los bloqueos de API.")
