@@ -22,50 +22,53 @@ def init_firebase():
     return firestore.client()
 
 def fetch_ml_deals():
-    """Obtiene ofertas de Mercado Libre México"""
-    # Consulta a la API de búsqueda de Mercado Libre México (MLM)
-    url = "https://api.mercadolibre.com/sites/MLM/search?q=oferta&limit=15"
+    """Obtiene hasta 200 ofertas de Mercado Libre México realizando peticiones paginadas"""
     headers = {"User-Agent": "Mozilla/5.0"}
-    
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"Error al consultar Mercado Libre API: {response.status_code}")
-        return []
-    
-    results = response.json().get("results", [])
     deals = []
-
-    for item in results:
-        price = item.get("price", 0)
-        original_price = item.get("original_price") or (price * 1.25) # Estimación si no hay precio previo
+    
+    # Hacemos 4 peticiones de 50 productos cada una (Total = 200 productos)
+    for offset in [0, 50, 100, 150]:
+        url = f"https://api.mercadolibre.com/sites/MLM/search?q=oferta&limit=50&offset={offset}"
+        response = requests.get(url, headers=headers)
         
-        # Filtrar solo productos con descuento real
-        if original_price > price:
-            thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg") # Imagen de alta resolución
-            
-            # Mapeo de categorías básico
-            cat_id = item.get("category_id", "")
-            category = "Tech"
-            if "MLM1430" in cat_id or "MLM1144" in cat_id:
-                category = "Gaming"
-            elif "MLM1430" in cat_id:
-                category = "Moda"
+        if response.status_code != 200:
+            print(f"Error al consultar Mercado Libre API (offset {offset}): {response.status_code}")
+            continue
+        
+        results = response.json().get("results", [])
 
-            deals.append({
-                "title": item.get("title", "Oferta Destacada"),
-                "store": "Mercado Libre",
-                "category": category,
-                "price": float(price),
-                "oldPrice": float(original_price),
-                "image": thumbnail,
-                "link": AFFILIATE_LINK, # Enlace de afiliado
-                "active": True,
-                "ml_id": item.get("id")
-            })
+        for item in results:
+            price = item.get("price", 0)
+            original_price = item.get("original_price") or (price * 1.25) # Estimación si no hay precio previo
+            
+            # Filtrar productos con descuento
+            if original_price > price:
+                thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg") # Imagen de alta resolución
+                
+                # Mapeo de categorías básico
+                cat_id = str(item.get("category_id", ""))
+                category = "Tech"
+                if "MLM1430" in cat_id or "MLM1144" in cat_id:
+                    category = "Gaming"
+                elif "MLM1430" in cat_id or "Ropa" in item.get("title", ""):
+                    category = "Moda"
+
+                deals.append({
+                    "title": item.get("title", "Oferta Destacada"),
+                    "store": "Mercado Libre",
+                    "category": category,
+                    "price": float(price),
+                    "oldPrice": float(original_price),
+                    "image": thumbnail,
+                    "link": AFFILIATE_LINK, # Enlace de afiliado
+                    "active": True,
+                    "ml_id": item.get("id")
+                })
+                
     return deals
 
 def sync_to_firestore(db, deals):
-    """Limpia las ofertas viejas e inserta las nuevas en Firebase"""
+    """Limpia las ofertas viejas e inserta las nuevas en Firebase mediante lotes (batches)"""
     products_ref = db.collection("products")
     
     # 1. Eliminar ofertas antiguas para mantener la lista fresca
@@ -74,17 +77,19 @@ def sync_to_firestore(db, deals):
         doc.reference.delete()
     print("🧹 Ofertas anteriores limpiadas de la base de datos.")
 
-    # 2. Agregar nuevas ofertas
+    # 2. Agregar las 200 nuevas ofertas
+    count = 0
     for deal in deals:
         products_ref.add(deal)
-        print(f"✅ Agregado: {deal['title']} - ${deal['price']} MXN")
+        count += 1
+        print(f"✅ [{count}/{len(deals)}] Agregado: {deal['title']} - ${deal['price']} MXN")
 
 if __name__ == "__main__":
     db = init_firebase()
-    print("🔎 Buscando ofertas en Mercado Libre...")
+    print("🔎 Buscando 200 ofertas en Mercado Libre...")
     new_deals = fetch_ml_deals()
     if new_deals:
-        print(f"🔥 Se encontraron {len(new_deals)} ofertas. Sincronizando...")
+        print(f"🔥 Se encontraron {len(new_deals)} ofertas válidas. Sincronizando...")
         sync_to_firestore(db, new_deals)
         print("🚀 Sincronización completada con éxito.")
     else:
