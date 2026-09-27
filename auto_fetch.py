@@ -32,7 +32,6 @@ def fetch_category_deals(query, category_name, total_needed=100):
     """Obtiene productos por categoría evitando bloqueos 403"""
     deals = []
     
-    # Hacemos 2 peticiones de 50 productos cada una (offset 0 y 50) = 100 productos
     for offset in [0, 50]:
         url = f"https://api.mercadolibre.com/sites/MLM/search?q={query}&limit=50&offset={offset}"
         
