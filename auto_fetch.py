@@ -7,15 +7,17 @@ from firebase_admin import credentials, firestore
 # Configuración del enlace de afiliado
 AFFILIATE_LINK = "https://www.mercadolibre.com.mx/social/eg20260925105329727"
 
-# Encabezados de navegador real para evitar el error 403 de Mercado Libre
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "es-MX,es;q=0.9,en-US;q=0.8,en;q=0.7"
-}
+# Sesión con encabezados optimizados para evitar bloqueos
+session = requests.Session()
+session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "es-MX,es;q=0.9",
+    "Connection": "keep-alive"
+})
 
 def init_firebase():
-    """Inicializa la conexión a Firebase usando archivo local o Variable de Entorno"""
+    """Inicializa la conexión a Firebase desde las variables secretas"""
     if os.path.exists("serviceAccountKey.json"):
         cred = credentials.Certificate("serviceAccountKey.json")
     elif "FIREBASE_CREDENTIALS" in os.environ:
@@ -28,59 +30,70 @@ def init_firebase():
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-def fetch_category_deals(query, category_name, total_needed=100):
-    """Obtiene productos por categoría evitando bloqueos 403"""
+def fetch_category_deals(category_id, category_name, total_needed=100):
+    """Obtiene productos directamente por ID de categoría de Mercado Libre MLM"""
     deals = []
     
+    # En lugar de buscar por palabras de texto (que da 403), consultamos directo la categoría MLM
+    # Categorías MLM: MLM1051 (Tech/Electrónica), MLM1144 (Gaming/Consolas), MLM1430 (Moda), MLM1246 (Belleza)
     for offset in [0, 50]:
-        url = f"https://api.mercadolibre.com/sites/MLM/search?q={query}&limit=50&offset={offset}"
+        url = f"https://api.mercadolibre.com/sites/MLM/search?category={category_id}&limit=50&offset={offset}&sort=relevance"
         
         try:
-            response = requests.get(url, headers=HEADERS, timeout=10)
+            response = session.get(url, timeout=12)
             
             if response.status_code != 200:
-                print(f"⚠️ Error al consultar {category_name} (offset {offset}): {response.status_code}")
-                continue
+                print(f"⚠️ Reintentando búsqueda alternativa para {category_name} (offset {offset}). Status: {response.status_code}")
+                # Fallback en caso de que falle la búsqueda directa por ID
+                url = f"https://api.mercadolibre.com/sites/MLM/search?q={category_name.lower()}&limit=50&offset={offset}"
+                response = session.get(url, timeout=12)
 
-            results = response.json().get("results", [])
-
-            for item in results:
-                price = item.get("price", 0)
-                original_price = item.get("original_price") or (price * 1.25)
-                
-                if price > 0:
-                    thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg")
+            if response.status_code == 200:
+                results = response.json().get("results", [])
+                for item in results:
+                    price = item.get("price", 0)
+                    original_price = item.get("original_price") or (price * 1.25)
                     
-                    deals.append({
-                        "title": item.get("title", "Oferta Destacada"),
-                        "store": "Mercado Libre",
-                        "category": category_name,
-                        "price": float(price),
-                        "oldPrice": float(original_price if original_price > price else price * 1.2),
-                        "image": thumbnail,
-                        "link": AFFILIATE_LINK,
-                        "active": True,
-                        "ml_id": item.get("id")
-                    })
+                    if price > 0:
+                        thumbnail = item.get("thumbnail", "").replace("I.jpg", "O.jpg")
+                        deals.append({
+                            "title": item.get("title", "Oferta Destacada"),
+                            "store": "Mercado Libre",
+                            "category": category_name,
+                            "price": float(price),
+                            "oldPrice": float(original_price if original_price > price else price * 1.2),
+                            "image": thumbnail,
+                            "link": AFFILIATE_LINK,
+                            "active": True,
+                            "ml_id": item.get("id")
+                        })
+            else:
+                print(f"❌ Error final {response.status_code} en {category_name}")
+                
         except Exception as e:
             print(f"❌ Excepción en consulta {category_name}: {e}")
             
     return deals[:total_needed]
 
 def fetch_all_balanced_deals():
-    """Junta 400 ofertas (100 por cada categoría)"""
+    """Junta 400 ofertas usando IDs de categoría oficiales de Mercado Libre México"""
     all_deals = []
     
+    # IDs de categorías oficiales en Mercado Libre México (MLM):
+    # MLM1051 = Celulares y Telefonía / Tecnología
+    # MLM1144 = Consolas y Videojuegos / Gaming
+    # MLM1430 = Ropa y Accesorios / Moda
+    # MLM1246 = Belleza y Cuidado Personal / Belleza
     categories_queries = [
-        {"query": "tecnologia gadget oferta mas vendido", "category": "Tech"},
-        {"query": "videojuegos gamer consola oferta", "category": "Gaming"},
-        {"query": "ropa tenis moda descuento", "category": "Moda"},
-        {"query": "skincare belleza hogar oferta mas vendido", "category": "Belleza"}
+        {"cat_id": "MLM1051", "category": "Tech"},
+        {"cat_id": "MLM1144", "category": "Gaming"},
+        {"cat_id": "MLM1430", "category": "Moda"},
+        {"cat_id": "MLM1246", "category": "Belleza"}
     ]
     
     for item in categories_queries:
         print(f"📦 Obteniendo 100 productos para la categoría: {item['category']}...")
-        category_deals = fetch_category_deals(item["query"], item["category"], total_needed=100)
+        category_deals = fetch_category_deals(item["cat_id"], item["category"], total_needed=100)
         all_deals.extend(category_deals)
         print(f"✔️ Obtenidos {len(category_deals)} de {item['category']}.")
         
@@ -112,4 +125,4 @@ if __name__ == "__main__":
         sync_to_firestore(db, deals)
         print("🚀 ¡Sincronización completada con éxito!")
     else:
-        print("❌ No se encontraron datos en la búsqueda. Revisa los bloqueos de API.")
+        print("❌ No se encontraron datos en la búsqueda. Revisa la conectividad.")
